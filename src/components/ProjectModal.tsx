@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { RideProject, AVAILABLE_TAGS, Highlight, ProjectStatus, TelemetryData, CameraView } from '../types';
-import { X, Plus, Trash2, Clock, Map, Activity, FolderOpen, ArrowUpCircle, ArrowDownCircle, SplitSquareVertical } from 'lucide-react';
+import { RideProject, Highlight, ProjectStatus, TelemetryData, CameraView } from '../types';
+import { X, Plus, Trash2, Clock, Map, Activity, FolderOpen, ArrowUpCircle, ArrowDownCircle, SplitSquareVertical, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { resizeImageFile } from '../utils/imageTools';
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -21,6 +22,11 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [highlights, setHighlights] = useState<Highlight[]>(initialData?.highlights || []);
   const [telemetry, setTelemetry] = useState<TelemetryData>(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, syncOffsetMs: 0 });
+  const [motorcycle, setMotorcycle] = useState(initialData?.motorcycle || '');
+  const [coverImage, setCoverImage] = useState(initialData?.coverImage || '');
+
+  // Custom Tag input
+  const [tagInput, setTagInput] = useState('');
 
   // Highlight inputs
   const [hlSourceFile, setHlSourceFile] = useState('');
@@ -41,6 +47,9 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
       setNotes(initialData?.notes || '');
       setHighlights(initialData?.highlights || []);
       setTelemetry(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, syncOffsetMs: 0 });
+      setMotorcycle(initialData?.motorcycle || '');
+      setCoverImage(initialData?.coverImage || '');
+      setTagInput('');
       setHlSourceFile('');
       setHlTime('');
       setHlNote('');
@@ -50,10 +59,19 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
 
   if (!isOpen) return null;
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
+  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = tagInput.trim();
+      if (val && !selectedTags.includes(val)) {
+        setSelectedTags([...selectedTags, val]);
+      }
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setSelectedTags(selectedTags.filter((t) => t !== tag));
   };
 
   const toggleTelemetry = (key: keyof TelemetryData) => {
@@ -91,7 +109,9 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
       tags: selectedTags,
       notes,
       highlights,
-      telemetry
+      telemetry,
+      coverImage,
+      motorcycle
     });
     onClose();
   };
@@ -150,6 +170,49 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
                       className="w-full bg-zinc-950 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-zinc-300">Motorka (Stroj)</label>
+                    <input
+                      type="text"
+                      value={motorcycle}
+                      onChange={(e) => setMotorcycle(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                      placeholder="např. Yamaha MT-07"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2 mt-4">
+                  <label className="block text-sm font-medium text-zinc-300">Náhledový obrázek (Netflix Cover)</label>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={async (e) => {
+                      if (e.target.files?.[0]) {
+                        const base64 = await resizeImageFile(e.target.files[0], 800);
+                        setCoverImage(base64);
+                      }
+                    }} 
+                    className="hidden" 
+                    id="cover-upload" 
+                  />
+                  <label 
+                    htmlFor="cover-upload" 
+                    className="flex items-center justify-center border-2 border-dashed border-zinc-700/50 rounded-xl h-40 cursor-pointer hover:bg-zinc-800/50 transition-all bg-cover bg-center overflow-hidden relative group" 
+                    style={{ backgroundImage: coverImage ? `url(${coverImage})` : undefined }}
+                  >
+                    {!coverImage && <span className="text-zinc-500 text-sm flex items-center gap-2"><ImageIcon size={18}/> Ozdob tenhle projekt fotkou</span>}
+                    {coverImage && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-white text-sm font-medium flex items-center gap-2"><ImageIcon size={16}/>Změnit fotku</span>
+                      </div>
+                    )}
+                  </label>
+                  {coverImage && (
+                    <button type="button" onClick={() => setCoverImage('')} className="text-xs text-red-500 hover:text-red-400 mt-2 block ml-auto font-medium transition-colors">
+                      Odstranit obrázek
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -277,21 +340,30 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
                 </div>
 
                 <div className="space-y-2 pt-2">
-                  <label className="block text-sm font-medium text-zinc-300">Štítky</label>
-                  <div className="flex flex-wrap gap-2">
-                    {AVAILABLE_TAGS.map((tag) => (
-                      <button
+                  <label className="block text-sm font-medium text-zinc-300">Vlastní štítky (Tagy)</label>
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleAddTag}
+                    placeholder="Napiš štítek viz 'Alpy 2026' a stiskni Enter..."
+                    className="w-full bg-zinc-950 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all font-medium text-sm"
+                  />
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedTags.map((tag) => (
+                      <span
                         key={tag}
-                        type="button"
-                        onClick={() => toggleTag(tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                          selectedTags.includes(tag)
-                            ? 'bg-zinc-200 border-zinc-200 text-zinc-900'
-                            : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-500'
-                        }`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20"
                       >
                         {tag}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="hover:bg-amber-500/20 rounded-full p-0.5 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
                     ))}
                   </div>
                 </div>

@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useProjects } from './hooks/useProjects';
 import { Library } from './components/Library';
 import { ProjectModal } from './components/ProjectModal';
 import { RideProject } from './types';
-import { Plus, LayoutDashboard, FolderOpen, Settings, Bike, Map, Activity, Clock } from 'lucide-react';
+import { Plus, LayoutDashboard, FolderOpen, Settings, Bike, Map, Activity, Clock, Download, Upload } from 'lucide-react';
+import { backupDatabase } from './utils/exportTools';
 
 export default function App() {
   const { projects, addProject, updateProject, deleteProject } = useProjects();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<RideProject | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'library'>('library');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'settings'>('library');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenModal = (project?: RideProject) => {
     setEditingProject(project || null);
@@ -22,6 +24,27 @@ export default function App() {
     } else {
       addProject(projectData);
     }
+  };
+
+  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (Array.isArray(data)) {
+          localStorage.setItem('motovideo_hub_projects_v2', JSON.stringify(data));
+          window.location.reload();
+        } else {
+          alert('Nepodporovaný formát zálohy.');
+        }
+      } catch (err) {
+        alert('Chyba při čtení souboru.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   // Simple stats
@@ -73,7 +96,14 @@ export default function App() {
         </nav>
 
         <div className="p-4">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zinc-500 hover:text-zinc-300 transition-all">
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'settings'
+                ? 'bg-zinc-800/50 text-zinc-100'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+            }`}
+          >
             <Settings size={18} />
             Nastavení
           </button>
@@ -147,6 +177,48 @@ export default function App() {
                 onEdit={handleOpenModal}
                 onDelete={deleteProject}
               />
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="max-w-2xl mx-auto space-y-8">
+                <div>
+                  <h2 className="text-2xl font-bold text-zinc-100">Nastavení aplikace</h2>
+                  <p className="text-zinc-400 mt-1">Zálohuj svá data nebo je obnov z počítače.</p>
+                </div>
+
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+                  <h3 className="text-lg font-medium text-zinc-100 mb-4">Záchranný kruh (Zálohování)</h3>
+                  <p className="text-sm text-zinc-400 mb-6">
+                    MotoVideo Hub běží aktuálně kompletně ve tvém prohlížeči a data nikam na internet neposílá. 
+                    Pokud ale promažeš historii prohlížeče, přijdeš o ně. Pravidelně svá data stahuj jako JSON soubor.
+                  </p>
+
+                  <div className="flex flex-wrap gap-4">
+                    <button
+                      onClick={() => backupDatabase(projects)}
+                      className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-5 py-2.5 rounded-lg font-medium transition-colors border border-zinc-700"
+                    >
+                      <Download size={20} />
+                      Zálohovat do PC
+                    </button>
+
+                    <input 
+                      type="file" 
+                      accept=".json" 
+                      className="hidden" 
+                      ref={fileInputRef} 
+                      onChange={handleRestore}
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 px-5 py-2.5 rounded-lg font-medium transition-colors border border-amber-500/20"
+                    >
+                      <Upload size={20} />
+                      Načíst ze zálohy
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

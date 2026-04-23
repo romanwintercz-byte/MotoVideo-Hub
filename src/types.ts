@@ -19,14 +19,16 @@ export interface RideProject {
   id: string;
   title: string;
   date: string;
-  folderPath: string; // Path to the folder containing dashcam files
+  folderPath: string;
   segmentLengthMinutes: 1 | 2 | 3;
-  totalSegments: number; // e.g., 20 files
+  totalSegments: number;
   status: ProjectStatus;
   tags: string[];
   highlights: Highlight[];
   notes: string;
   telemetry: TelemetryData;
+  coverImage?: string; // base64 string pro lokální uložení
+  motorcycle?: string; // Označení motorky (garáž)
   createdAt: number;
 }
 
