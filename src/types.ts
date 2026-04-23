@@ -15,6 +15,16 @@ export interface TelemetryData {
   syncOffsetMs: number; // For future use (time difference between first video and telemetry)
 }
 
+export interface Motorcycle {
+  id: string;
+  name: string; // e.g., "Yamaha MT-07"
+  make?: string;
+  year?: string;
+  image?: string; // base64
+  notes?: string;
+  createdAt: number;
+}
+
 export interface RideProject {
   id: string;
   title: string;
@@ -28,7 +38,8 @@ export interface RideProject {
   notes: string;
   telemetry: TelemetryData;
   coverImage?: string; // base64 string pro lokální uložení
-  motorcycle?: string; // Označení motorky (garáž)
+  motorcycle?: string; // Označení motorky (garáž - legacy name)
+  motorcycleId?: string; // ID spojené s Garáží
   createdAt: number;
 }
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { RideProject, Highlight, ProjectStatus, TelemetryData, CameraView } from '../types';
-import { X, Plus, Trash2, Clock, Map, Activity, FolderOpen, ArrowUpCircle, ArrowDownCircle, SplitSquareVertical, Image as ImageIcon } from 'lucide-react';
+import { RideProject, Highlight, ProjectStatus, TelemetryData, CameraView, Motorcycle } from '../types';
+import { X, Plus, Trash2, Clock, Map, Activity, FolderOpen, ArrowUpCircle, ArrowDownCircle, SplitSquareVertical, Image as ImageIcon, Bike } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { resizeImageFile } from '../utils/imageTools';
 
@@ -9,9 +9,10 @@ interface ProjectModalProps {
   onClose: () => void;
   onSave: (project: Omit<RideProject, 'id' | 'createdAt'>) => void;
   initialData?: RideProject | null;
+  motorcycles?: Motorcycle[];
 }
 
-export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectModalProps) {
+export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles = [] }: ProjectModalProps) {
   const [title, setTitle] = useState(initialData?.title || '');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [folderPath, setFolderPath] = useState(initialData?.folderPath || '');
@@ -22,7 +23,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [highlights, setHighlights] = useState<Highlight[]>(initialData?.highlights || []);
   const [telemetry, setTelemetry] = useState<TelemetryData>(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, syncOffsetMs: 0 });
-  const [motorcycle, setMotorcycle] = useState(initialData?.motorcycle || '');
+  const [motorcycleId, setMotorcycleId] = useState<string>(initialData?.motorcycleId || '');
   const [coverImage, setCoverImage] = useState(initialData?.coverImage || '');
 
   // Custom Tag input
@@ -47,7 +48,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
       setNotes(initialData?.notes || '');
       setHighlights(initialData?.highlights || []);
       setTelemetry(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, syncOffsetMs: 0 });
-      setMotorcycle(initialData?.motorcycle || '');
+      setMotorcycleId(initialData?.motorcycleId || '');
       setCoverImage(initialData?.coverImage || '');
       setTagInput('');
       setHlSourceFile('');
@@ -99,6 +100,8 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedMc = motorcycles.find(m => m.id === motorcycleId);
+    
     onSave({
       title,
       date,
@@ -111,7 +114,8 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
       highlights,
       telemetry,
       coverImage,
-      motorcycle
+      motorcycleId: selectedMc?.id || '',
+      motorcycle: selectedMc?.name || initialData?.motorcycle || ''
     });
     onClose();
   };
@@ -172,13 +176,23 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData }: ProjectMo
                   </div>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-zinc-300">Motorka (Stroj)</label>
-                    <input
-                      type="text"
-                      value={motorcycle}
-                      onChange={(e) => setMotorcycle(e.target.value)}
-                      className="w-full bg-zinc-950 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
-                      placeholder="např. Yamaha MT-07"
-                    />
+                    <div className="relative">
+                      <select
+                        value={motorcycleId}
+                        onChange={(e) => setMotorcycleId(e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-700/50 rounded-lg px-4 py-2.5 text-zinc-100 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all appearance-none"
+                      >
+                        <option value="">-- Vyber motorku --</option>
+                        {motorcycles.map(mc => (
+                          <option key={mc.id} value={mc.id}>
+                            {mc.name} {mc.make ? `(${mc.make})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-zinc-500">
+                        <Bike size={16} />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 

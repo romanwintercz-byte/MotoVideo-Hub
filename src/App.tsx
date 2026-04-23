@@ -1,16 +1,25 @@
 import React, { useState, useRef } from 'react';
 import { useProjects } from './hooks/useProjects';
+import { useMotorcycles } from './hooks/useMotorcycles';
 import { Library } from './components/Library';
 import { ProjectModal } from './components/ProjectModal';
-import { RideProject } from './types';
-import { Plus, LayoutDashboard, FolderOpen, Settings, Bike, Map, Activity, Clock, Download, Upload } from 'lucide-react';
+import { Garage } from './components/Garage';
+import { MotorcycleModal } from './components/MotorcycleModal';
+import { Motorcycle, RideProject } from './types';
+import { Plus, LayoutDashboard, FolderOpen, Settings, Bike, Map, Activity, Clock, Download, Upload, Wrench } from 'lucide-react';
 import { backupDatabase } from './utils/exportTools';
 
 export default function App() {
   const { projects, addProject, updateProject, deleteProject } = useProjects();
+  const { motorcycles, addMotorcycle, updateMotorcycle, deleteMotorcycle } = useMotorcycles();
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<RideProject | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'settings'>('library');
+  
+  const [isMcModalOpen, setIsMcModalOpen] = useState(false);
+  const [editingMc, setEditingMc] = useState<Motorcycle | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'library' | 'garage' | 'settings'>('library');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenModal = (project?: RideProject) => {
@@ -23,6 +32,19 @@ export default function App() {
       updateProject(editingProject.id, projectData);
     } else {
       addProject(projectData);
+    }
+  };
+
+  const handleOpenMcModal = (mc?: Motorcycle) => {
+    setEditingMc(mc || null);
+    setIsMcModalOpen(true);
+  };
+
+  const handleSaveMc = (mcData: Omit<Motorcycle, 'id' | 'createdAt'>) => {
+    if (editingMc) {
+      updateMotorcycle(editingMc.id, mcData);
+    } else {
+      addMotorcycle(mcData);
     }
   };
 
@@ -93,6 +115,20 @@ export default function App() {
               {projects.length}
             </span>
           </button>
+          <button
+            onClick={() => setActiveTab('garage')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'garage'
+                ? 'bg-zinc-800/50 text-zinc-100'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+            }`}
+          >
+            <Wrench size={18} />
+            Garáž (Stroje)
+            <span className="ml-auto bg-zinc-800 text-xs py-0.5 px-2 rounded-full text-zinc-300">
+              {motorcycles.length}
+            </span>
+          </button>
         </nav>
 
         <div className="p-4">
@@ -115,15 +151,17 @@ export default function App() {
         {/* Header */}
         <header className="h-20 border-b border-zinc-800/50 flex items-center justify-between px-8 bg-zinc-950/80 backdrop-blur-md z-10">
           <h2 className="text-xl font-semibold text-zinc-100">
-            {activeTab === 'dashboard' ? 'Přehled' : 'Knihovna vyjížděk (Projekty)'}
+            {activeTab === 'dashboard' ? 'Přehled' : activeTab === 'library' ? 'Knihovna vyjížděk (Projekty)' : activeTab === 'garage' ? 'Moje stroje' : 'Nastavení'}
           </h2>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-amber-500/20"
-          >
-            <Plus size={18} />
-            Přidat vyjížďku
-          </button>
+          {activeTab !== 'garage' && activeTab !== 'settings' && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-amber-500/20"
+            >
+              <Plus size={18} />
+              Přidat vyjížďku
+            </button>
+          )}
         </header>
 
         {/* Content Area */}
@@ -146,8 +184,10 @@ export default function App() {
                     <p className="text-3xl font-bold text-amber-500">~{totalMinutes}</p>
                   </div>
                   <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
-                    <p className="text-zinc-400 text-sm font-medium mb-1">Zajímavé momenty</p>
-                    <p className="text-3xl font-bold text-blue-400">{totalHighlights}</p>
+                    <p className="text-zinc-400 text-sm font-medium mb-1 flex items-center gap-2">
+                      <Bike size={16} /> Počet strojů
+                    </p>
+                    <p className="text-3xl font-bold text-blue-400">{motorcycles.length}</p>
                   </div>
                   <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col justify-center gap-3">
                      <div className="flex items-center gap-3 text-zinc-300 text-sm">
@@ -179,6 +219,15 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'garage' && (
+              <Garage
+                motorcycles={motorcycles}
+                onAdd={() => handleOpenMcModal()}
+                onEdit={handleOpenMcModal}
+                onDelete={deleteMotorcycle}
+              />
+            )}
+
             {activeTab === 'settings' && (
               <div className="max-w-2xl mx-auto space-y-8">
                 <div>
@@ -195,7 +244,7 @@ export default function App() {
 
                   <div className="flex flex-wrap gap-4">
                     <button
-                      onClick={() => backupDatabase(projects)}
+                      onClick={() => backupDatabase(projects)} // TODO: Backup MCs as well if needed
                       className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-5 py-2.5 rounded-lg font-medium transition-colors border border-zinc-700"
                     >
                       <Download size={20} />
@@ -230,6 +279,13 @@ export default function App() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveProject}
         initialData={editingProject}
+        motorcycles={motorcycles}
+      />
+      <MotorcycleModal
+        isOpen={isMcModalOpen}
+        onClose={() => setIsMcModalOpen(false)}
+        onSave={handleSaveMc}
+        initialData={editingMc}
       />
     </div>
   );
