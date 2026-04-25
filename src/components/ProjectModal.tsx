@@ -22,7 +22,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
   const [selectedTags, setSelectedTags] = useState<string[]>(initialData?.tags || []);
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [highlights, setHighlights] = useState<Highlight[]>(initialData?.highlights || []);
-  const [telemetry, setTelemetry] = useState<TelemetryData>(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, syncOffsetMs: 0 });
+  const [telemetry, setTelemetry] = useState<TelemetryData>(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, hasTechAir: false, syncOffsetMs: 0 });
   const [motorcycleId, setMotorcycleId] = useState<string>(initialData?.motorcycleId || '');
   const [coverImage, setCoverImage] = useState(initialData?.coverImage || '');
 
@@ -47,7 +47,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
       setSelectedTags(initialData?.tags || []);
       setNotes(initialData?.notes || '');
       setHighlights(initialData?.highlights || []);
-      setTelemetry(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, syncOffsetMs: 0 });
+      setTelemetry(initialData?.telemetry || { hasDiablo: false, hasAmazfit: false, hasTechAir: false, syncOffsetMs: 0 });
       setMotorcycleId(initialData?.motorcycleId || '');
       setCoverImage(initialData?.coverImage || '');
       setTagInput('');
@@ -290,7 +290,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
               {/* Section 3: Telemetry */}
               <div className="space-y-4 pt-6 border-t border-zinc-800">
                 <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-2">3. Telemetrie & Zdrojová data</h3>
-                <div className="flex gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <button
                     type="button"
                     onClick={() => toggleTelemetry('hasDiablo')}
@@ -305,7 +305,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
                     </div>
                     <div className="text-left">
                       <div className="font-semibold text-sm">Diablo Super Biker</div>
-                      <div className="text-xs opacity-70">Mám GPX (Rychlost, GPS)</div>
+                      <div className="text-xs opacity-70">Mám PNG (Obrázek trasy)</div>
                     </div>
                   </button>
 
@@ -324,6 +324,24 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
                     <div className="text-left">
                       <div className="font-semibold text-sm">Amazfit Bip 6</div>
                       <div className="text-xs opacity-70">Mám TCX (Tepová frekvence)</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleTelemetry('hasTechAir')}
+                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                      telemetry.hasTechAir 
+                        ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className={telemetry.hasTechAir ? 'text-green-500' : 'text-zinc-600'}>
+                      <Activity size={24} />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-sm">Tech Air 5</div>
+                      <div className="text-xs opacity-70">Mám data z vesty</div>
                     </div>
                   </button>
                 </div>

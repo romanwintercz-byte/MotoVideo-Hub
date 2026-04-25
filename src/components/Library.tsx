@@ -70,6 +70,11 @@ export function Library({ projects, onEdit, onDelete }: LibraryProps) {
                       <Activity size={14} />
                     </div>
                   )}
+                  {project.telemetry.hasTechAir && (
+                    <div title="Máš data z Tech Air 5" className="bg-green-500/10 text-green-500 p-1.5 rounded-md flex items-center">
+                      <Activity size={14} />
+                    </div>
+                  )}
                   {project.highlights.length > 0 && (
                     <div className="bg-zinc-800 text-zinc-300 text-xs px-2 py-1.5 rounded-md flex items-center gap-1">
                       <Tag size={12} />

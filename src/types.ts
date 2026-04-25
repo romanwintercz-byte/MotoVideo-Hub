@@ -12,6 +12,7 @@ export interface Highlight {
 export interface TelemetryData {
   hasDiablo: boolean;
   hasAmazfit: boolean;
+  hasTechAir: boolean; // Nová vlajka pro airbag vestu Tech Air 5
   syncOffsetMs: number; // For future use (time difference between first video and telemetry)
 }
 
