@@ -57,7 +57,17 @@ export default function App() {
       try {
         const data = JSON.parse(event.target?.result as string);
         if (Array.isArray(data)) {
+          // Backward compatibility: old format was just an array of projects
           localStorage.setItem('motovideo_hub_projects_v2', JSON.stringify(data));
+          window.location.reload();
+        } else if (data.projects || data.motorcycles) {
+          // New format: { version, projects, motorcycles }
+          if (data.projects) {
+            localStorage.setItem('motovideo_hub_projects_v2', JSON.stringify(data.projects));
+          }
+          if (data.motorcycles) {
+            localStorage.setItem('motovideo_hub_motorcycles_v1', JSON.stringify(data.motorcycles));
+          }
           window.location.reload();
         } else {
           alert('Nepodporovaný formát zálohy.');
@@ -244,7 +254,7 @@ export default function App() {
 
                   <div className="flex flex-wrap gap-4">
                     <button
-                      onClick={() => backupDatabase(projects)} // TODO: Backup MCs as well if needed
+                      onClick={() => backupDatabase(projects, motorcycles)}
                       className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-5 py-2.5 rounded-lg font-medium transition-colors border border-zinc-700"
                     >
                       <Download size={20} />

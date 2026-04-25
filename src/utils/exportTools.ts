@@ -1,4 +1,4 @@
-import { RideProject } from '../types';
+import { RideProject, Motorcycle } from '../types';
 
 export function exportToDaVinciCSV(project: RideProject) {
   // První řádek: Hlavička tabulky definovaná systémem DaVinci Resolve
@@ -51,9 +51,13 @@ export function exportToDaVinciCSV(project: RideProject) {
   document.body.removeChild(link);
 }
 
-export function backupDatabase(projects: RideProject[]) {
+export function backupDatabase(projects: RideProject[], motorcycles: Motorcycle[] = []) {
   // Stáhne veškerá data aplikace do .json souboru
-  const data = JSON.stringify(projects, null, 2);
+  const data = JSON.stringify({
+    version: 2,
+    projects,
+    motorcycles
+  }, null, 2);
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
