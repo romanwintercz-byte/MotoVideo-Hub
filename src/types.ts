@@ -13,6 +13,11 @@ export interface TelemetryData {
   hasDiablo: boolean;
   diabloImage?: string; // Base64 obrázku z Diablo Super Biker
   hasAmazfit: boolean;
+  tcxData?: {
+    maxHr: number;
+    avgHr: number;
+    points: { time: string; hr: number }[];
+  };
   hasTechAir: boolean; // Nová vlajka pro airbag vestu Tech Air 5
   syncOffsetMs: number; // For future use (time difference between first video and telemetry)
 }

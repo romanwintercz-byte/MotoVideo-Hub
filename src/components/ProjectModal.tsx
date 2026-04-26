@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RideProject, Highlight, ProjectStatus, TelemetryData, CameraView, Motorcycle } from '../types';
-import { X, Plus, Trash2, Clock, Map, Activity, FolderOpen, ArrowUpCircle, ArrowDownCircle, SplitSquareVertical, Image as ImageIcon, Bike } from 'lucide-react';
+import { X, Plus, Trash2, Clock, Map, Activity, FolderOpen, ArrowUpCircle, ArrowDownCircle, SplitSquareVertical, Image as ImageIcon, Bike, Upload as UploadIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { resizeImageFile } from '../utils/imageTools';
 
@@ -96,6 +96,51 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
 
   const removeHighlight = (id: string) => {
     setHighlights(highlights.filter((h) => h.id !== id));
+  };
+
+  const handleTcxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(text, "text/xml");
+
+      const trackpoints = xmlDoc.getElementsByTagName("Trackpoint");
+      const points: { time: string; hr: number }[] = [];
+      let sumHr = 0;
+      let maxHr = 0;
+
+      for (let i = 0; i < trackpoints.length; i++) {
+        const tp = trackpoints[i];
+        const timeNode = tp.getElementsByTagName("Time")[0];
+        const hrNode = tp.getElementsByTagName("HeartRateBpm")[0];
+
+        if (timeNode && hrNode) {
+          const valueNode = hrNode.getElementsByTagName("Value")[0];
+          if (valueNode) {
+            const hr = parseInt(valueNode.textContent || "0", 10);
+            const time = timeNode.textContent || "";
+            if (hr > 0) {
+              points.push({ time, hr });
+              sumHr += hr;
+              if (hr > maxHr) maxHr = hr;
+            }
+          }
+        }
+      }
+
+      if (points.length > 0) {
+        const avgHr = Math.round(sumHr / points.length);
+        setTelemetry({ ...telemetry, tcxData: { maxHr, avgHr, points } });
+      } else {
+        alert("Nenalezena žádná data tepové frekvence v tomto TCX souboru.");
+      }
+    } catch (err) {
+      alert("Chyba při zpracování TCX souboru.");
+      console.error(err);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -339,23 +384,55 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleTelemetry('hasAmazfit')}
-                    className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                      telemetry.hasAmazfit 
-                        ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className={telemetry.hasAmazfit ? 'text-blue-500' : 'text-zinc-600'}>
-                      <Activity size={24} />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold text-sm">Amazfit Bip 6</div>
-                      <div className="text-xs opacity-70">Mám TCX (Tepová frekvence)</div>
-                    </div>
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleTelemetry('hasAmazfit')}
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                        telemetry.hasAmazfit 
+                          ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
+                          : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className={telemetry.hasAmazfit ? 'text-blue-500' : 'text-zinc-600'}>
+                        <Activity size={24} />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-sm">Amazfit Bip 6</div>
+                        <div className="text-xs opacity-70">Mám TCX (Tepová frekvence)</div>
+                      </div>
+                    </button>
+                    {telemetry.hasAmazfit && (
+                      <div className="mt-1">
+                        <input
+                          type="file"
+                          accept=".tcx,.xml"
+                          onChange={handleTcxUpload}
+                          className="hidden"
+                          id="tcx-upload"
+                        />
+                        <label
+                          htmlFor="tcx-upload"
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-700/50 rounded-xl h-24 cursor-pointer hover:bg-zinc-800/50 transition-all text-zinc-500 overflow-hidden relative group p-4"
+                        >
+                          {!telemetry.tcxData ? (
+                            <span className="text-xs flex items-center gap-1.5"><UploadIcon size={14}/> Nahrát .tcx soubor</span>
+                          ) : (
+                            <div className="w-full h-full flex flex-col justify-center text-center">
+                              <div className="text-sm font-semibold text-zinc-300">TCX Načteno</div>
+                              <div className="text-xs text-zinc-500 mt-1">
+                                Max: {telemetry.tcxData.maxHr} bpm | Ø {telemetry.tcxData.avgHr} bpm<br/>
+                                Délka: {telemetry.tcxData.points.length} bodů
+                              </div>
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white text-xs font-medium">Změnit .tcx</span>
+                              </div>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     type="button"

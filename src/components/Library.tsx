@@ -1,6 +1,6 @@
 import React from 'react';
 import { RideProject } from '../types';
-import { Film, Clock, CheckCircle, HardDrive, Tag, Calendar, Map, Activity, FolderOpen, Bike, Download, ImageIcon } from 'lucide-react';
+import { Film, Clock, CheckCircle, HardDrive, Tag, Calendar, Map, Activity, FolderOpen, Bike, Download, ImageIcon, PlaySquare } from 'lucide-react';
 import { motion } from 'motion/react';
 import { exportToDaVinciCSV } from '../utils/exportTools';
 
@@ -8,9 +8,10 @@ interface LibraryProps {
   projects: RideProject[];
   onEdit: (project: RideProject) => void;
   onDelete: (id: string) => void;
+  onPlayOverlay: (project: RideProject) => void;
 }
 
-export function Library({ projects, onEdit, onDelete }: LibraryProps) {
+export function Library({ projects, onEdit, onDelete, onPlayOverlay }: LibraryProps) {
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
@@ -157,7 +158,19 @@ export function Library({ projects, onEdit, onDelete }: LibraryProps) {
               </div>
 
               {/* Action Bar */}
-              <div className="mt-auto pt-4 border-t border-zinc-800/50 flex justify-end">
+              <div className="mt-auto pt-4 border-t border-zinc-800/50 flex flex-wrap gap-2 justify-end">
+                {(project.telemetry.diabloImage || (project.telemetry.hasAmazfit && project.telemetry.tcxData)) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPlayOverlay(project);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-green-500 bg-green-500/10 hover:bg-green-500/20 px-3 py-1.5 rounded-lg transition-colors border border-green-500/20"
+                  >
+                    <PlaySquare size={14} />
+                    Zelené plátno
+                  </button>
+                )}
                 {project.highlights.length > 0 && (
                   <button
                     onClick={(e) => {

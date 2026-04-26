@@ -5,6 +5,7 @@ import { Library } from './components/Library';
 import { ProjectModal } from './components/ProjectModal';
 import { Garage } from './components/Garage';
 import { MotorcycleModal } from './components/MotorcycleModal';
+import { GreenScreenOverlay } from './components/GreenScreenOverlay';
 import { Motorcycle, RideProject } from './types';
 import { Plus, LayoutDashboard, FolderOpen, Settings, Bike, Map, Activity, Clock, Download, Upload, Wrench } from 'lucide-react';
 import { backupDatabase } from './utils/exportTools';
@@ -15,6 +16,8 @@ export default function App() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<RideProject | null>(null);
+  
+  const [overlayProject, setOverlayProject] = useState<RideProject | null>(null);
   
   const [isMcModalOpen, setIsMcModalOpen] = useState(false);
   const [editingMc, setEditingMc] = useState<Motorcycle | null>(null);
@@ -226,6 +229,7 @@ export default function App() {
                 projects={projects}
                 onEdit={handleOpenModal}
                 onDelete={deleteProject}
+                onPlayOverlay={setOverlayProject}
               />
             )}
 
@@ -284,6 +288,13 @@ export default function App() {
       </main>
 
       {/* Modals */}
+      {overlayProject && (
+        <GreenScreenOverlay 
+          project={overlayProject}
+          onClose={() => setOverlayProject(null)}
+        />
+      )}
+      
       <ProjectModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
