@@ -290,29 +290,59 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
               {/* Section 3: Telemetry */}
               <div className="space-y-4 pt-6 border-t border-zinc-800">
                 <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-2">3. Telemetrie & Zdrojová data</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => toggleTelemetry('hasDiablo')}
-                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                      telemetry.hasDiablo 
-                        ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className={telemetry.hasDiablo ? 'text-red-500' : 'text-zinc-600'}>
-                      <Map size={24} />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold text-sm">Diablo Super Biker</div>
-                      <div className="text-xs opacity-70">Mám PNG (Obrázek trasy)</div>
-                    </div>
-                  </button>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleTelemetry('hasDiablo')}
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                        telemetry.hasDiablo 
+                          ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
+                          : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className={telemetry.hasDiablo ? 'text-red-500' : 'text-zinc-600'}>
+                        <Map size={24} />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-sm">Diablo Super Biker</div>
+                        <div className="text-xs opacity-70">Mám PNG (Obrázek trasy)</div>
+                      </div>
+                    </button>
+                    {telemetry.hasDiablo && (
+                      <div className="mt-1">
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg"
+                          onChange={async (e) => {
+                            if (e.target.files?.[0]) {
+                              const base64 = await resizeImageFile(e.target.files[0], 800);
+                              setTelemetry({ ...telemetry, diabloImage: base64 });
+                            }
+                          }}
+                          className="hidden"
+                          id="diablo-upload"
+                        />
+                        <label
+                          htmlFor="diablo-upload"
+                          className="flex items-center justify-center border-2 border-dashed border-zinc-700/50 rounded-xl h-24 cursor-pointer hover:bg-zinc-800/50 transition-all bg-contain bg-no-repeat bg-center overflow-hidden relative group"
+                          style={{ backgroundImage: telemetry.diabloImage ? `url(${telemetry.diabloImage})` : undefined }}
+                        >
+                          {!telemetry.diabloImage && <span className="text-zinc-500 text-xs flex items-center gap-1.5"><ImageIcon size={14}/> Vybrat trasu</span>}
+                          {telemetry.diabloImage && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-white text-xs font-medium">Změnit obrázek</span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     type="button"
                     onClick={() => toggleTelemetry('hasAmazfit')}
-                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                    className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
                       telemetry.hasAmazfit 
                         ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
                         : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
@@ -330,7 +360,7 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
                   <button
                     type="button"
                     onClick={() => toggleTelemetry('hasTechAir')}
-                    className={`flex-1 flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                    className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
                       telemetry.hasTechAir 
                         ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
                         : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'

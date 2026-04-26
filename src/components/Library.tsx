@@ -61,8 +61,14 @@ export function Library({ projects, onEdit, onDelete }: LibraryProps) {
                 </div>
                 <div className="flex gap-1.5">
                   {project.telemetry.hasDiablo && (
-                    <div title="Máš data z Diabla" className="bg-red-500/10 text-red-500 p-1.5 rounded-md flex items-center">
+                    <div title="Máš data z Diabla" className="bg-red-500/10 text-red-500 p-1.5 rounded-md flex items-center relative group">
                       <Map size={14} />
+                      {project.telemetry.diabloImage && (
+                        <div 
+                          className="absolute bottom-full mb-2 right-0 w-48 h-48 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 bg-contain bg-center bg-no-repeat hidden md:block" 
+                          style={{ backgroundImage: `url(${project.telemetry.diabloImage})`, transformOrigin: 'bottom right' }} 
+                        />
+                      )}
                     </div>
                   )}
                   {project.telemetry.hasAmazfit && (
