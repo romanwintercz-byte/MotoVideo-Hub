@@ -47,11 +47,23 @@ export function Library({ projects, onEdit, onDelete }: LibraryProps) {
           >
             {/* Card Header with optional cover Image */}
             <div 
-              className="h-40 bg-zinc-950 relative p-5 flex flex-col justify-between border-b border-zinc-800/50 bg-cover bg-center"
+              className="h-40 bg-zinc-950 relative p-5 flex flex-col justify-between border-b border-zinc-800/50 bg-cover bg-center overflow-hidden"
               style={{ backgroundImage: project.coverImage ? `url(${project.coverImage})` : undefined }}
             >
               {project.coverImage && (
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-black/60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-black/60 z-0" />
+              )}
+
+              {/* Diablo Map Background Overlay */}
+              {project.telemetry.diabloImage && (
+                <div
+                  className={`absolute right-0 top-0 bottom-0 w-2/3 z-0 bg-contain bg-right bg-no-repeat pointer-events-none transition-all duration-700 group-hover:scale-110 group-hover:opacity-80 ${project.coverImage ? 'opacity-40 mix-blend-screen' : 'opacity-20'}`}
+                  style={{
+                    backgroundImage: `url(${project.telemetry.diabloImage})`,
+                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 60%)',
+                    maskImage: 'linear-gradient(to right, transparent 0%, black 60%)'
+                  }}
+                />
               )}
               
               <div className="relative z-10 flex justify-between items-start">
