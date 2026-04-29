@@ -67,3 +67,56 @@ export function backupDatabase(projects: RideProject[], motorcycles: Motorcycle[
   link.click();
   document.body.removeChild(link);
 }
+
+export function exportToSRT(project: RideProject) {
+  const tcxData = project.telemetry?.tcxData;
+  if (!tcxData || tcxData.points.length === 0) {
+    alert("Nemáš nahraná žádná TCX data.");
+    return;
+  }
+
+  const formatTime = (seconds: number) => {
+    const pad = (num: number, size: number) => ('000' + num).slice(size * -1);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds - Math.floor(seconds)) * 1000);
+    return `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)},${pad(ms, 3)}`;
+  };
+
+  let srtContent = '';
+  const firstTime = new Date(tcxData.points[0].time).getTime();
+  
+  tcxData.points.forEach((point, index) => {
+    const currentTime = new Date(point.time).getTime();
+    const elapsedSeconds = (currentTime - firstTime) / 1000;
+    
+    // For the last point, assume 1 second duration
+    let nextElapsedSeconds = elapsedSeconds + 1;
+    if (index < tcxData.points.length - 1) {
+      const nextTime = new Date(tcxData.points[index + 1].time).getTime();
+      nextElapsedSeconds = (nextTime - firstTime) / 1000;
+      
+      // If the gap is huge (e.g. paused watch), limit duration to 2 seconds
+      if (nextElapsedSeconds - elapsedSeconds > 2) {
+          nextElapsedSeconds = elapsedSeconds + 2;
+      }
+    }
+    
+    srtContent += `${index + 1}\n`;
+    srtContent += `${formatTime(elapsedSeconds)} --> ${formatTime(nextElapsedSeconds)}\n`;
+    srtContent += `❤ ${point.hr} bpm\n\n`;
+  });
+
+  const blob = new Blob([srtContent], { type: 'text/srt;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  
+  const safeTitle = project.title.replace(/[^a-z0-9]/gi, '_');
+  link.setAttribute("download", `${safeTitle}_Tepovka.srt`);
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}

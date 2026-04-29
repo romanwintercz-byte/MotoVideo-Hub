@@ -2,7 +2,7 @@ import React from 'react';
 import { RideProject } from '../types';
 import { Film, Clock, CheckCircle, HardDrive, Tag, Calendar, Map, Activity, FolderOpen, Bike, Download, ImageIcon, PlaySquare } from 'lucide-react';
 import { motion } from 'motion/react';
-import { exportToDaVinciCSV } from '../utils/exportTools';
+import { exportToDaVinciCSV, exportToSRT } from '../utils/exportTools';
 
 interface LibraryProps {
   projects: RideProject[];
@@ -159,6 +159,19 @@ export function Library({ projects, onEdit, onDelete, onPlayOverlay }: LibraryPr
 
               {/* Action Bar */}
               <div className="mt-auto pt-4 border-t border-zinc-800/50 flex flex-wrap gap-2 justify-end">
+                {project.telemetry.hasAmazfit && project.telemetry.tcxData && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      exportToSRT(project);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded-lg transition-colors border border-rose-500/20"
+                    title="Exportovat tepovku jako SRT titulky pro DaVinci Resolve"
+                  >
+                    <Download size={14} />
+                    SRT Titulky
+                  </button>
+                )}
                 {(project.telemetry.diabloImage || (project.telemetry.hasAmazfit && project.telemetry.tcxData)) && (
                   <button
                     onClick={(e) => {
