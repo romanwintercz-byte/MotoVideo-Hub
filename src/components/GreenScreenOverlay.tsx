@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RideProject } from '../types';
-import { X, Play, Pause, Heart, Info, Monitor } from 'lucide-react';
+import { X, Play, Pause, Heart, Info, Monitor, Settings2 } from 'lucide-react';
 
 interface GreenScreenOverlayProps {
   project: RideProject;
@@ -16,6 +16,18 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
   const [currentTimeIndex, setCurrentTimeIndex] = useState(0);
   const [currentBpm, setCurrentBpm] = useState(hasData ? tcxData.points[0].hr : 0);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  
+  // Design settings
+  const [design, setDesign] = useState<{
+    style: 'digital' | 'circular';
+    color: string;
+    size: number;
+  }>({
+    style: 'circular',
+    color: '#ff0a0a', // Barva okysličené krve
+    size: 1,
+  });
 
   // Playback timer
   useEffect(() => {
@@ -47,7 +59,6 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
     );
   }
 
-  // Calculate some simple graph points or a ring color based on Zone
   const getZoneColor = (bpm: number) => {
     if (bpm < 120) return "text-zinc-400"; // Z1/Z2
     if (bpm < 150) return "text-green-500"; // Z3
@@ -58,11 +69,22 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
   const currentPoint = hasData ? tcxData.points[currentTimeIndex] : null;
   const timeDisplay = currentPoint ? new Date(currentPoint.time).toLocaleTimeString('cs-CZ') : '';
 
+  // SVG Gauge calculations
+  const radius = 46;
+  const circumference = 2 * Math.PI * radius;
+  // Let's assume typical HR range 60 - 200 for the gauge display
+  const minHr = 60;
+  const maxHr = 200;
+  // Add some smoothing to the visual value
+  const hrRange = maxHr - minHr;
+  const hrPercent = Math.max(0, Math.min(1, (currentBpm - minHr) / hrRange));
+  const dashoffset = circumference - hrPercent * circumference;
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#00FF00] overflow-hidden select-none">
       
       {/* Controls UI (Will not be recorded if we crop the bottom in OBS, or we can make it auto-hide) */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur p-4 flex items-center justify-between z-20 transition-opacity hover:opacity-100 opacity-0">
+      <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur p-4 flex items-center justify-between z-20 transition-opacity hover:opacity-100 opacity-0 group">
         <div className="flex items-center gap-4">
           <button onClick={onClose} className="text-white hover:text-red-400 p-2 bg-zinc-900 rounded-full w-10 h-10 flex items-center justify-center transition-colors">
             <X size={20} />
@@ -77,6 +99,13 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
           >
             <Info size={16} /> Jak pracovat s DaVinci?
           </button>
+          
+          <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-1.5 rounded-md transition-colors"
+          >
+            <Settings2 size={16} /> Vzhled
+          </button>
         </div>
 
         <div className="flex items-center gap-8">
@@ -84,7 +113,7 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
             <div className="flex flex-col gap-1 items-end">
               <div className="flex items-center gap-4">
                 <span className="text-zinc-400 font-mono text-sm bg-zinc-900 px-3 py-1 rounded">
-                  {currentTimeIndex}s / {tcxData.points.length}s
+                  {currentTimeIndex}s / {tcxData!.points.length}s
                 </span>
                 <span className="text-white font-mono font-bold bg-zinc-900 px-3 py-1 rounded border border-zinc-700">
                   {timeDisplay}
@@ -93,12 +122,12 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
               <input 
                 type="range" 
                 min="0" 
-                max={tcxData.points.length - 1} 
+                max={tcxData!.points.length - 1} 
                 value={currentTimeIndex} 
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   setCurrentTimeIndex(val);
-                  setCurrentBpm(tcxData.points[val].hr);
+                  setCurrentBpm(tcxData!.points[val].hr);
                 }} 
                 className="w-64 accent-blue-500 cursor-pointer"
               />
@@ -132,29 +161,101 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
         </div>
       )}
 
+      {showSettings && (
+        <div className="absolute bottom-24 left-4 z-20 bg-zinc-900/95 backdrop-blur-md border border-zinc-700 text-white p-6 rounded-2xl shadow-2xl w-80">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Settings2 size={20} className="text-blue-400"/> Nastavení Vzhledu</h3>
+          <div className="space-y-4">
+             <div>
+                <label className="text-xs text-zinc-400 block mb-1">Styl widgetu</label>
+                <div className="flex bg-zinc-800 rounded-lg p-1">
+                  <button onClick={() => setDesign({...design, style: 'digital'})} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${design.style === 'digital' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>Digitální</button>
+                  <button onClick={() => setDesign({...design, style: 'circular'})} className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${design.style === 'circular' ? 'bg-zinc-600 text-white' : 'text-zinc-400'}`}>Kruhový</button>
+                </div>
+             </div>
+             
+             <div>
+                <label className="text-xs text-zinc-400 block mb-1">Barva (HEX)</label>
+                <div className="flex gap-2">
+                   <input type="color" value={design.color} onChange={e => setDesign({...design, color: e.target.value})} className="w-8 h-8 rounded bg-transparent cursor-pointer" />
+                   <input type="text" value={design.color} onChange={e => setDesign({...design, color: e.target.value})} className="flex-1 bg-zinc-800 rounded px-2 text-sm text-zinc-300 border border-zinc-700" />
+                </div>
+             </div>
+             
+             <div>
+                <label className="text-xs text-zinc-400 block mb-1">Velikost (Scale)</label>
+                <input type="range" min="0.5" max="3" step="0.1" value={design.size} onChange={e => setDesign({...design, size: parseFloat(e.target.value)})} className="w-full accent-blue-500" />
+             </div>
+          </div>
+          <button onClick={() => setShowSettings(false)} className="mt-6 w-full py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-white font-medium transition-colors">Zavřít</button>
+        </div>
+      )}
+
       <div className="absolute inset-0 flex items-start justify-start p-12">
          {/* THE WIDGET ITSELF */}
          {hasData && (
-           <div className="flex items-center gap-4 bg-black/80 backdrop-blur-sm p-4 rounded-3xl border border-zinc-800/80 shadow-[0_10px_40px_rgba(0,0,0,0.5)] min-w-[280px]">
-                <div className={`relative flex items-center justify-center w-20 h-20 rounded-full bg-black/60 shadow-inner ${getZoneColor(currentBpm)} transition-colors duration-500 ring-2 ring-current ring-offset-4 ring-offset-zinc-900`}>
-                  <div className={`absolute flex items-center justify-center ${isPlaying && currentBpm > 0 ? 'animate-pulse' : ''}`}>
-                    <Heart size={32} className="fill-[#ff0a0a] text-[#ff0a0a]" />
+           <div 
+             className="origin-top-left transition-transform" 
+             style={{ transform: `scale(${design.size})` }}
+           >
+              {design.style === 'digital' ? (
+                <div className="flex items-center gap-4 bg-black/80 backdrop-blur-sm p-4 rounded-3xl border border-zinc-800/80 shadow-[0_10px_40px_rgba(0,0,0,0.5)] min-w-[280px]">
+                  <div className={`relative flex items-center justify-center w-20 h-20 rounded-full bg-black/60 shadow-inner ${getZoneColor(currentBpm)} transition-colors duration-500 ring-2 ring-current ring-offset-4 ring-offset-zinc-900`}>
+                    <div className={`absolute flex items-center justify-center ${isPlaying && currentBpm > 0 ? 'animate-pulse' : ''}`}>
+                      <Heart size={32} style={{ color: design.color, fill: design.color }} />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col ml-2 justify-center">
-                  <div className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">Tepová freq.</div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-5xl font-black text-white tracking-tighter" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-                      {currentBpm}
-                    </span>
-                    <span className="text-zinc-400 font-bold ml-1 text-sm">bpm</span>
+                  <div className="flex flex-col ml-2 justify-center text-white">
+                    <div className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">Tepová freq.</div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-5xl font-black tracking-tighter" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                        {currentBpm}
+                      </span>
+                      <span className="text-zinc-400 font-bold ml-1 text-sm">bpm</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center justify-center w-48 h-48 relative drop-shadow-2xl">
+                  {/* Circular Gauge */}
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle 
+                       cx="50" cy="50" r={radius} 
+                       fill="none" 
+                       stroke="rgba(0,0,0,0.4)" 
+                       strokeWidth="8"
+                    />
+                    <circle 
+                       cx="50" cy="50" r={radius} 
+                       fill="none" 
+                       stroke={design.color} 
+                       strokeWidth="8"
+                       strokeLinecap="round"
+                       style={{
+                         strokeDasharray: circumference,
+                         strokeDashoffset: dashoffset,
+                         transition: 'stroke-dashoffset 0.5s ease-out'
+                       }}
+                    />
+                  </svg>
+                  
+                  {/* Inside content */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
+                     <div className={`flex items-center justify-center mb-1 ${isPlaying && currentBpm > 60 ? 'animate-pulse' : ''}`}>
+                        <Heart size={20} style={{ color: design.color, fill: design.color }} />
+                     </div>
+                     <span className="text-5xl font-black text-white leading-none tracking-tighter drop-shadow-md">
+                        {currentBpm}
+                     </span>
+                     <span className="text-xs font-bold text-zinc-300 tracking-wider">BPM</span>
+                  </div>
+                </div>
+              )}
+           </div>
          )}
       </div>
 
     </div>
   );
 }
+
