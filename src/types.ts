@@ -19,6 +19,13 @@ export interface TelemetryData {
     points: { time: string; hr: number }[];
   };
   hasTechAir: boolean; // Nová vlajka pro airbag vestu Tech Air 5
+  techAirData?: {
+    maxSpeed: number;
+    maxLeanAngle?: number;
+    maxAcceleration?: number;
+    maxDeceleration?: number;
+    points: { time: string; speed: number; lat: number; lon: number; leanAngle?: number; acceleration?: number; }[];
+  };
   syncOffsetMs: number; // For future use (time difference between first video and telemetry)
 }
 

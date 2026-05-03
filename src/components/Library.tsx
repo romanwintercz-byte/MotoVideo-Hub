@@ -172,7 +172,7 @@ export function Library({ projects, onEdit, onDelete, onPlayOverlay }: LibraryPr
                     SRT Titulky
                   </button>
                 )}
-                {(project.telemetry.diabloImage || (project.telemetry.hasAmazfit && project.telemetry.tcxData)) && (
+                {(project.telemetry.diabloImage || project.telemetry.tcxData || project.telemetry.techAirData) && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

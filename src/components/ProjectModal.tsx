@@ -143,6 +143,168 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
     }
   };
 
+  const getDistanceFromLatLonInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  const calculateBearing = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const toRad = (val: number) => val * Math.PI / 180;
+    const l1 = toRad(lat1);
+    const l2 = toRad(lat2);
+    const dLon = toRad(lon2 - lon1);
+    const y = Math.sin(dLon) * Math.cos(l2);
+    const x = Math.cos(l1) * Math.sin(l2) - Math.sin(l1) * Math.cos(l2) * Math.cos(dLon);
+    return Math.atan2(y, x);
+  };
+
+  const handleTechAirUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const rawPoints: { time: Date; speed: number; lat: number; lon: number }[] = [];
+
+      // Simple GPX parsing
+      if (file.name.toLowerCase().endsWith('.gpx')) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        const trackpoints = xmlDoc.getElementsByTagName("trkpt");
+
+        let prevPoint: { time: Date; lat: number; lon: number } | null = null;
+
+        for (let i = 0; i < trackpoints.length; i++) {
+          const tp = trackpoints[i];
+          const lat = parseFloat(tp.getAttribute("lat") || "0");
+          const lon = parseFloat(tp.getAttribute("lon") || "0");
+          const timeNode = tp.getElementsByTagName("time")[0];
+          
+          if (timeNode) {
+            const timeStr = timeNode.textContent || "";
+            const time = new Date(timeStr);
+            
+            let speedKmh = 0;
+            const speedNode = tp.getElementsByTagName("speed")[0];
+            
+            if (speedNode) {
+              const speedMs = parseFloat(speedNode.textContent || "0");
+              speedKmh = speedMs * 3.6;
+            } else if (prevPoint) {
+              const distKm = getDistanceFromLatLonInKm(prevPoint.lat, prevPoint.lon, lat, lon);
+              const timeDiffHours = (time.getTime() - prevPoint.time.getTime()) / (1000 * 60 * 60);
+              if (timeDiffHours > 0) {
+                speedKmh = distKm / timeDiffHours;
+              }
+            }
+
+            if (speedKmh > 350) speedKmh = prevPoint ? 0 : 0; 
+
+            rawPoints.push({ time, speed: speedKmh, lat, lon });
+            prevPoint = { time, lat, lon };
+          }
+        }
+      }
+
+      const points: { time: string; speed: number; lat: number; lon: number; leanAngle?: number; acceleration?: number }[] = [];
+      let maxSpeed = 0;
+      let maxLeanAngle = 0;
+      let maxAcceleration = 0;
+      let maxDeceleration = 0;
+
+      for (let i = 0; i < rawPoints.length; i++) {
+        const current = rawPoints[i];
+        let accG = 0;
+        let lean = 0;
+
+        const prev = i > 0 ? rawPoints[i - 1] : current;
+        const next = i < rawPoints.length - 1 ? rawPoints[i + 1] : current;
+
+        const dtPrev = (current.time.getTime() - prev.time.getTime()) / 1000;
+        const dtNext = (next.time.getTime() - current.time.getTime()) / 1000;
+        
+        if (dtPrev > 0 && dtNext > 0 && i > 0 && i < rawPoints.length - 1) {
+          const vPrev = prev.speed / 3.6;
+          const vNext = next.speed / 3.6;
+          const dt = dtPrev + dtNext;
+          const accel = (vNext - vPrev) / dt; // m/s^2
+          accG = accel / 9.81;
+
+          const heading1 = calculateBearing(prev.lat, prev.lon, current.lat, current.lon);
+          const heading2 = calculateBearing(current.lat, current.lon, next.lat, next.lon);
+          
+          let dHeading = heading2 - heading1;
+          while (dHeading > Math.PI) dHeading -= 2 * Math.PI;
+          while (dHeading < -Math.PI) dHeading += 2 * Math.PI;
+
+          const omega = dHeading / dtNext; // rad/s
+          const vCurrent = current.speed / 3.6;
+          
+          const aCentripetal = vCurrent * omega; // m/s^2
+          lean = Math.atan(aCentripetal / 9.81) * 180 / Math.PI; // degrees
+          
+          // Filter out noise at low speeds
+          if (vCurrent < 2.77) { // < 10 km/h
+             lean = 0;
+             accG = 0;
+          }
+        }
+
+        // Apply a simple smoothing if useful, or just store raw mapped. GPS precision can be bad.
+        // We will store it and we can limit lean visually later.
+        if (lean > 65) lean = 65; 
+        if (lean < -65) lean = -65;
+
+        points.push({
+          time: current.time.toISOString(),
+          speed: Math.round(current.speed),
+          lat: current.lat,
+          lon: current.lon,
+          acceleration: accG,
+          leanAngle: lean
+        });
+      }
+
+      // Smooth points
+      for (let i = 2; i < points.length - 2; i++) {
+        const smoothedAcc = (points[i-2].acceleration! + points[i-1].acceleration! + points[i].acceleration! + points[i+1].acceleration! + points[i+2].acceleration!) / 5;
+        const smoothedLean = (points[i-2].leanAngle! + points[i-1].leanAngle! + points[i].leanAngle! + points[i+1].leanAngle! + points[i+2].leanAngle!) / 5;
+        points[i].acceleration = smoothedAcc;
+        points[i].leanAngle = smoothedLean;
+
+        if (points[i].speed > maxSpeed) maxSpeed = points[i].speed;
+        if (smoothedAcc > maxAcceleration) maxAcceleration = smoothedAcc;
+        if (smoothedAcc < maxDeceleration) maxDeceleration = smoothedAcc;
+        if (Math.abs(smoothedLean) > maxLeanAngle) maxLeanAngle = Math.abs(smoothedLean);
+      }
+
+      if (points.length > 0) {
+        setTelemetry({ 
+          ...telemetry, 
+          techAirData: { 
+            maxSpeed: Math.round(maxSpeed), 
+            maxLeanAngle: Math.round(maxLeanAngle),
+            maxAcceleration,
+            maxDeceleration,
+            points 
+          } 
+        });
+      } else {
+        alert("Nenalezena žádná platná GPS data v tomto souboru (vyžaduje formát .gpx).");
+      }
+    } catch (err) {
+      alert("Chyba při zpracování souboru.");
+      console.error(err);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const selectedMc = motorcycles.find(m => m.id === motorcycleId);
@@ -434,23 +596,55 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => toggleTelemetry('hasTechAir')}
-                    className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
-                      telemetry.hasTechAir 
-                        ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
-                    }`}
-                  >
-                    <div className={telemetry.hasTechAir ? 'text-green-500' : 'text-zinc-600'}>
-                      <Activity size={24} />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-semibold text-sm">Tech Air 5</div>
-                      <div className="text-xs opacity-70">Mám data z vesty</div>
-                    </div>
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleTelemetry('hasTechAir')}
+                      className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all ${
+                        telemetry.hasTechAir 
+                          ? 'bg-zinc-800 border-zinc-600 text-zinc-100' 
+                          : 'bg-zinc-950 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className={telemetry.hasTechAir ? 'text-green-500' : 'text-zinc-600'}>
+                        <Activity size={24} />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-sm">Tech Air 5</div>
+                        <div className="text-xs opacity-70">Mám data z vesty</div>
+                      </div>
+                    </button>
+                    {telemetry.hasTechAir && (
+                      <div className="mt-1">
+                        <input
+                          type="file"
+                          accept=".gpx"
+                          onChange={handleTechAirUpload}
+                          className="hidden"
+                          id="techair-upload"
+                        />
+                        <label
+                          htmlFor="techair-upload"
+                          className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-700/50 rounded-xl h-24 cursor-pointer hover:bg-zinc-800/50 transition-all text-zinc-500 overflow-hidden relative group p-4"
+                        >
+                          {!telemetry.techAirData ? (
+                            <span className="text-xs flex items-center gap-1.5"><UploadIcon size={14}/> Nahrát .gpx soubor</span>
+                          ) : (
+                            <div className="w-full h-full flex flex-col justify-center text-center">
+                              <div className="text-sm font-semibold text-zinc-300">GPX Načteno</div>
+                              <div className="text-xs text-zinc-500 mt-1">
+                                Max rychlost: {telemetry.techAirData.maxSpeed} km/h<br/>
+                                Délka: {telemetry.techAirData.points.length} bodů
+                              </div>
+                              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white text-xs font-medium">Změnit .gpx</span>
+                              </div>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
