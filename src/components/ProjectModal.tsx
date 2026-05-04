@@ -610,8 +610,8 @@ export function ProjectModal({ isOpen, onClose, onSave, initialData, motorcycles
                         <Activity size={24} />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold text-sm">Tech Air 5</div>
-                        <div className="text-xs opacity-70">Mám data z vesty</div>
+                        <div className="font-semibold text-sm">GPS Telemetrie</div>
+                        <div className="text-xs opacity-70">Vesta nebo data z videa (.gpx)</div>
                       </div>
                     </button>
                     {telemetry.hasTechAir && (
