@@ -18,10 +18,6 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeIndex, setCurrentTimeIndex] = useState(0);
-  const [currentBpm, setCurrentBpm] = useState(hasTcx ? tcxData.points[0].hr : 0);
-  const [currentSpeed, setCurrentSpeed] = useState(hasTechAir ? techAirData.points[0].speed : 0);
-  const [currentLeanAngle, setCurrentLeanAngle] = useState(hasTechAir ? techAirData.points[0].leanAngle || 0 : 0);
-  const [currentAccel, setCurrentAccel] = useState(hasTechAir ? techAirData.points[0].acceleration || 0 : 0);
   const [showInstructions, setShowInstructions] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
@@ -40,6 +36,15 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
     layout: 'vertical'
   });
 
+  // Calculate current point data dynamically to avoid stale state in intervals
+  const safeTcxIndex = Math.min(currentTimeIndex, (hasTcx ? tcxData.points.length : 1) - 1);
+  const currentBpm = hasTcx ? Math.round(tcxData.points[safeTcxIndex].hr) : 0;
+  
+  const safeTechAirIndex = Math.min(currentTimeIndex, (hasTechAir ? techAirData.points.length : 1) - 1);
+  const currentSpeed = hasTechAir ? Math.round(techAirData.points[safeTechAirIndex].speed || 0) : 0;
+  const currentLeanAngle = hasTechAir ? (techAirData.points[safeTechAirIndex].leanAngle || 0) : 0;
+  const currentAccel = hasTechAir ? (techAirData.points[safeTechAirIndex].acceleration || 0) : 0;
+
   // Playback timer
   useEffect(() => {
     let interval: number;
@@ -52,20 +57,12 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
             setIsPlaying(false);
             return prev;
           }
-          if (hasTcx && next < tcxData.points.length) {
-            setCurrentBpm(tcxData.points[next].hr);
-          }
-          if (hasTechAir && next < techAirData.points.length) {
-            setCurrentSpeed(techAirData.points[next].speed);
-            setCurrentLeanAngle(techAirData.points[next].leanAngle || 0);
-            setCurrentAccel(techAirData.points[next].acceleration || 0);
-          }
           return next;
         });
       }, 1000); // 1 point per second playback (standard TCX is usually 1Hz)
     }
     return () => clearInterval(interval);
-  }, [isPlaying, hasAnyData, tcxData, techAirData, hasTcx, hasTechAir]);
+  }, [isPlaying, hasAnyData, hasTcx, hasTechAir, tcxData, techAirData]);
 
   if (!hasAnyData) {
     return (
@@ -152,14 +149,6 @@ export function GreenScreenOverlay({ project, onClose }: GreenScreenOverlayProps
                 onChange={(e) => {
                   const val = Number(e.target.value);
                   setCurrentTimeIndex(val);
-                  if (hasTcx && val < tcxData.points.length) {
-                    setCurrentBpm(tcxData.points[val].hr);
-                  }
-                  if (hasTechAir && val < techAirData.points.length) {
-                    setCurrentSpeed(techAirData.points[val].speed);
-                    setCurrentLeanAngle(techAirData.points[val].leanAngle || 0);
-                    setCurrentAccel(techAirData.points[val].acceleration || 0);
-                  }
                 }} 
                 className="w-64 accent-blue-500 cursor-pointer"
               />
